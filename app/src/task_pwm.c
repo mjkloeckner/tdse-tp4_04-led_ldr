@@ -47,11 +47,13 @@
 /* Application & Tasks includes. */
 #include "board.h"
 #include "app.h"
+#include <math.h>
 
 /********************** macros and definitions *******************************/
 
-#define STEP (2048)
-#define PERIOD (65535)
+#define ADC_MAX_VALUE (4096)
+#define PERIOD        (65535)
+#define min(a, b) a < b ? a : b
 
 /********************** internal data declaration ****************************/
 
@@ -78,16 +80,13 @@ void task_pwm_init(void *parameters)
 	LOGGER_LOG("  %s is running - %s\r\n", GET_NAME(task_pwm_init), p_task_pwm);
 }
 
-float x_norm;
 void task_pwm_update(void *parameters)
 {
     shared_data_type *shared_data = (shared_data_type *) parameters;
-
-    x_norm = (shared_data->adc_value/4096.0f);
-    shared_data->pwm_active = x_norm*65535;
+    float x_norm = min(((float)shared_data->adc_value/ADC_MAX_VALUE)*8, 1);
+    shared_data->pwm_active = PERIOD*(1 - pow(x_norm, 1.5));
     setPWM(htim3, TIM_CHANNEL_1, PERIOD, shared_data->pwm_active);
 }
-
 
 void setPWM(TIM_HandleTypeDef timer, uint32_t channel,
             uint16_t period, uint16_t pulse) {
