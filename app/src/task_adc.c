@@ -48,7 +48,7 @@
 #include "app.h"
 
 /********************** macros and definitions *******************************/
-
+#define ADC_AVG_SAMPLES 8
 
 /********************** internal data declaration ****************************/
 
@@ -57,7 +57,7 @@
 HAL_StatusTypeDef ADC_Poll_Read(uint16_t *value);
 
 /********************** internal data definition *****************************/
-const char *p_task_adc 		= "Task ADC";
+const char *p_task_adc = "Task ADC";
 
 /********************** external data declaration *****************************/
 
@@ -79,7 +79,7 @@ void task_adc_update(void *parameters)
 
 	shared_data_type *shared_data = (shared_data_type *) parameters;
 
-	if (HAL_OK==ADC_Poll_Read(&shared_data->adc_value)) {
+	if (HAL_OK == ADC_Poll_Read(&shared_data->adc_value)) {
 		shared_data->adc_end_of_conversion = true;
 	}
 	else {
@@ -88,21 +88,26 @@ void task_adc_update(void *parameters)
 }
 
 
-
-//	Requests start of conversion, waits until conversion done
+// Requests start of conversion, waits until conversion done
 HAL_StatusTypeDef ADC_Poll_Read(uint16_t *value) {
-	HAL_StatusTypeDef res;
+    HAL_StatusTypeDef res;
+    uint32_t sum = 0;
 
-	res=HAL_ADC_Start(&hadc1);
-	if ( HAL_OK==res ) {
-		res=HAL_ADC_PollForConversion(&hadc1, 0);
-		if ( HAL_OK==res ) {
-			*value = HAL_ADC_GetValue(&hadc1);
-		}
-	}
-	return res;
+    for (int i = 0; i < ADC_AVG_SAMPLES; i++)
+    {
+        if ((res = HAL_ADC_Start(&hadc1)) != HAL_OK)
+            return res;
+
+        if ((res = HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY)) != HAL_OK)
+            return res;
+
+        sum += HAL_ADC_GetValue(&hadc1);
+        HAL_ADC_Stop(&hadc1);
+    }
+
+    *value = (sum / ADC_AVG_SAMPLES);
+    return HAL_OK;
 }
-
 
 
 /********************** end of file ******************************************/
