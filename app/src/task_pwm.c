@@ -55,37 +55,32 @@
 #define PERIOD        (65535)
 #define min(a, b) a < b ? a : b
 
-/********************** internal data declaration ****************************/
-
 /********************** internal functions declaration ***********************/
 void setPWM(TIM_HandleTypeDef timer,
             uint32_t channel,
             uint16_t period,
             uint16_t pulse);
 
-/********************** internal data definition *****************************/
-const char *p_task_pwm 		= "Task PWM";
-
 /********************** external data declaration *****************************/
 extern TIM_HandleTypeDef htim3;
-
 
 /********************** external functions definition ************************/
 void task_pwm_init(void *parameters)
 {
-	shared_data_type *shared_data = (shared_data_type *) parameters;
-
-	shared_data->pwm_active = 0;
-	/* Print out: Task Initialized */
-	LOGGER_LOG("  %s is running - %s\r\n", GET_NAME(task_pwm_init), p_task_pwm);
+    shared_data_type *shared_data = (shared_data_type *) parameters;
+    shared_data->pwm_active = 0;
 }
 
 void task_pwm_update(void *parameters)
 {
-    shared_data_type *shared_data = (shared_data_type *) parameters;
-    float x_norm = min(((float)shared_data->adc_value/ADC_MAX_VALUE)*8, 1);
-    shared_data->pwm_active = PERIOD*(1 - pow(x_norm, 1.5));
-    setPWM(htim3, TIM_CHANNEL_1, PERIOD, shared_data->pwm_active);
+    shared_data_type *data = (shared_data_type *) parameters;
+    if (data->adc_end_of_conversion)
+    {
+        data->adc_end_of_conversion = false;
+        float x = ((float)data->adc_value/ADC_MAX_VALUE);
+        data->pwm_active = PERIOD*(1 - 2*pow(x, 2));
+        setPWM(htim3, TIM_CHANNEL_1, PERIOD, data->pwm_active);
+    }
 }
 
 void setPWM(TIM_HandleTypeDef timer, uint32_t channel,
